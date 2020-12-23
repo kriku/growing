@@ -1,0 +1,16 @@
+{
+  "name": "grover",
+  "version": "1.0.0",
+  "description": "iot sensors, light, pumps in home project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mqtt": "^4.2.6",
+    "telegraf": "^3.38.0"
+  }
+}
