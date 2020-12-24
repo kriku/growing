@@ -33,6 +33,24 @@ bot.command('lights_off', (ctx) => {
     client.publish(topics.relay1.in, '1');
 });
 
+bot.command('water_off', (ctx) => {
+    client.publish(topics.water.in, '00');
+});
+
+bot.command('water_5sec1', (ctx) => {
+    client.publish(topics.water.in, '01');
+    setInterval(() => {
+        client.publish(topics.water.in, '00');
+    }, 5000);
+});
+
+bot.command('water_5sec2', (ctx) => {
+    client.publish(topics.water.in, '10');
+    setInterval(() => {
+        client.publish(topics.water.in, '00');
+    }, 5000);
+});
+
 function subscribe(channel) {
     client.subscribe(channel, function (err) {
         console.log(`subscribe ${channel}`);
@@ -105,7 +123,7 @@ client.on('message', function (topic, message) {
     }
 
     default: {
-        console.log('unmatched message topic: ', topic);
+        console.log(`unmatched message topic: ${topic} (message: ${message})`);
     }}
 });
 
