@@ -1,13 +1,6 @@
 var mqtt = require('mqtt');
 const { Telegraf } = require('telegraf');
-
 const bot = new Telegraf(process.env.BOT_TOKEN);
-
-bot.start((ctx) => ctx.reply('Welcome'));
-bot.help((ctx) => ctx.reply('Send me a sticker'));
-bot.on('sticker', (ctx) => ctx.reply('👍'));
-bot.hears('hi', (ctx) => ctx.reply('Hey there'));
-bot.launch();
 
 const defaultTopics = (topic) => ({
     in: `${topic}.in`,
@@ -17,7 +10,6 @@ const defaultTopics = (topic) => ({
 const topics = {
     bot: defaultTopics('bot'),
     bmp: defaultTopics('bmp180'),
-    relay0: defaultTopics('relay0'),
     relay1: defaultTopics('relay1'),
     water: defaultTopics('water'),
     temperature: 'water.temperature',
@@ -26,6 +18,19 @@ const topics = {
 const client  = mqtt.connect('mqtt://alarm', {
     username: 'mqtt-test',
     password: 'mqtt-test',
+});
+
+bot.start((ctx) => ctx.reply('Welcome'));
+bot.help((ctx) => ctx.reply('Send me a sticker'));
+bot.on('sticker', (ctx) => ctx.reply('👍'));
+bot.hears('hi', (ctx) => ctx.reply('Hey there'));
+
+bot.command('lights_on', (ctx) => {
+    client.publish(topics.relay1.in, '0');
+});
+
+bot.command('lights_off', (ctx) => {
+    client.publish(topics.relay1.in, '1');
 });
 
 function subscribe(channel) {
@@ -40,9 +45,11 @@ client.on('connect', function () {
     subscribe(topics.bot.in);
     subscribe(topics.bmp.out);
     subscribe(topics.relay1.out);
+    subscribe(topics.water.out);
     subscribe(topics.temperature);
 });
 
+let isOn = false;
 const log = [];
 const air = [];
 
@@ -86,9 +93,13 @@ client.on('message', function (topic, message) {
 
     case (topics.relay1.out): {
         // 0 - релю включено
-        const isOn = !(parseInt(message));
-        if (isOn) {
-            // console.log('is on');
+        const status = !(parseInt(message));
+        if (status != isOn) {
+            isOn = status;
+            bot.telegram.sendMessage(
+                '-400442557',
+                isOn ? '🌝' : '🌚'
+            );
         }
         break;
     }
@@ -106,3 +117,5 @@ process.once('SIGTERM', () => {
     client.end();
     bot.stop('SIGTERM');
 });
+
+bot.launch();
