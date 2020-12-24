@@ -2,13 +2,12 @@ var mqtt = require('mqtt');
 const { Telegraf } = require('telegraf');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
+
 bot.start((ctx) => ctx.reply('Welcome'));
 bot.help((ctx) => ctx.reply('Send me a sticker'));
 bot.on('sticker', (ctx) => ctx.reply('👍'));
 bot.hears('hi', (ctx) => ctx.reply('Hey there'));
 bot.launch();
-
-let timeout = 0;
 
 const defaultTopics = (topic) => ({
     in: `${topic}.in`,
@@ -24,68 +23,30 @@ const topics = {
     temperature: 'water.temperature',
 };
 
-var client  = mqtt.connect('mqtt://alarm', {
+const client  = mqtt.connect('mqtt://alarm', {
     username: 'mqtt-test',
     password: 'mqtt-test',
 });
 
+function subscribe(channel) {
+    client.subscribe(channel, function (err) {
+        console.log(`subscribe ${channel}`);
+        console.log(`${!err ? 'good' : 'error' }`);
+    });
+}
+
 client.on('connect', function () {
     console.log('connect');
-    client.subscribe(topics.bot.in, function (err) {
-        if (!err) {
-            client.publish(topics.bot.out, 'hello from bot');
-            console.log('good');
-        } else {
-            console.log('error');
-        }
-    });
-
-    client.subscribe(topics.bmp.out, function (err) {
-        if (!err) {
-            console.log('bmp topic subscription good');
-        } else {
-            console.log('bmp topic subscription error');
-        }
-    });
-
-    client.subscribe(topics.temperature, function (err) {
-        if (!err) {
-            console.log('temperature topic subscription good');
-        } else {
-            console.log('temperature topic subscription error');
-        }
-    });
-
-    client.subscribe(topics.relay0.out, function (err) {
-        if (!err) {
-            console.log('relay0 topic subscription good');
-        } else {
-            console.log('relay0 topic subscription error');
-        }
-    });
-
-    client.subscribe(topics.relay1.out, function (err) {
-        if (!err) {
-            console.log('relay1 topic subscription good');
-        } else {
-            console.log('relay1 topic subscription error');
-        }
-    });
-
-    client.subscribe(topics.water.out, function (err) {
-        if (!err) {
-            console.log('water topic subscription good');
-        } else {
-            console.log('water topic subscription error');
-        }
-    });
+    subscribe(topics.bot.in);
+    subscribe(topics.bmp.out);
+    subscribe(topics.relay1.out);
+    subscribe(topics.temperature);
 });
 
 const log = [];
 const air = [];
 
 client.on('message', function (topic, message) {
-    console.log(topic, message.toString());
 
     switch (topic.replace('/', '.')) {
 
@@ -96,7 +57,7 @@ client.on('message', function (topic, message) {
             const average = air.reduce((a, c) => (a + c / air.length), 0).toFixed(2);
             bot.telegram.sendMessage(
                 '-400442557',
-                `🌿 air - average ${average}°C`
+                `🌿 air : ${average}°C`
             );
             air.length = 0;
         }
@@ -106,27 +67,35 @@ client.on('message', function (topic, message) {
     case (topics.bmp.out): {
         const t = parseFloat(message);
         log.push(t);
+        if (log.length > 20) {
+            const unique = Array.from(new Set(log)).map(a => `${a}°C`).join(', ');
+            bot.telegram.sendMessage(
+                '-400442557',
+                `🌡 light : ${unique}`);
+            log.length = 0;
+        }
 
-        if (t >= 35) {
-            if (log.length > 1) {
-                bot.telegram.sendMessage(
-                    '-400442557',
-                    `❄️ cooling...\n\ntemperatures:\n${log.join(', ')}`
-                );
-                log.length = 0;
-            }
-            // включаем реле (0 - включено)
-            client.publish(topics.relay1.in, '0');
-            timeout = 2;
-        } else {
-            if (timeout-- <= 0) {
-                client.publish(topics.relay1.in, '1');
-            }
+        if (t >= 40) {
+            bot.telegram.sendMessage(
+                '-373287526',
+                `HIGH TEMPERATURE!!! ${t}`
+            );
         }
         break;
     }
+
+    case (topics.relay1.out): {
+        // 0 - релю включено
+        const isOn = !(parseInt(message));
+        if (isOn) {
+            // console.log('is on');
+        }
+        break;
     }
-    // client.end();
+
+    default: {
+        console.log('unmatched message topic: ', topic);
+    }}
 });
 
 process.once('SIGINT', () => {
