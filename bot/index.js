@@ -68,8 +68,13 @@ client.on('connect', function () {
 });
 
 let isOn = false;
-const log = [];
+const isOnSmile = () => (isOn ? '🌝' : '🌚');
 const air = [];
+const bmp = [];
+// количество сообщений, по которым считается статистика
+// (часть теряется, за каждое потерянное - +2с)
+const airJoinLength = () => (isOn ? 30 : 150);
+const bmpJoinLength = () => (isOn ? 30 : 150);
 
 client.on('message', function (topic, message) {
 
@@ -78,11 +83,11 @@ client.on('message', function (topic, message) {
     case (topics.temperature): {
         const t = parseFloat(message);
         air.push(t);
-        if (air.length > 20) {
+        if (air.length > airJoinLength()) {
             const average = air.reduce((a, c) => (a + c / air.length), 0).toFixed(2);
             bot.telegram.sendMessage(
                 '-400442557',
-                `🌿 air : ${average}°C`
+                `${isOnSmile()} 🌿 air : ${average}°C`
             );
             air.length = 0;
         }
@@ -91,13 +96,19 @@ client.on('message', function (topic, message) {
 
     case (topics.bmp.out): {
         const t = parseFloat(message);
-        log.push(t);
-        if (log.length > 20) {
-            const unique = Array.from(new Set(log)).map(a => `${a}°C`).join(', ');
+        bmp.push(t);
+        if (bmp.length > bmpJoinLength()) {
+            const firstLast = Array.from(
+                new Set([
+                    bmp[0],
+                    bmp[bmp.length - 1],
+                ])
+            ).map(a => `${a}°C`).join(' - ');
             bot.telegram.sendMessage(
                 '-400442557',
-                `🌡 light : ${unique}`);
-            log.length = 0;
+                `${isOnSmile()} 🌡 light : ${firstLast}`
+            );
+            bmp.length = 0;
         }
 
         if (t >= 40) {
@@ -116,9 +127,13 @@ client.on('message', function (topic, message) {
             isOn = status;
             bot.telegram.sendMessage(
                 '-400442557',
-                isOn ? '🌝' : '🌚'
+                isOnSmile()
             );
         }
+        break;
+    }
+
+    case (topics.water.out): {
         break;
     }
 
