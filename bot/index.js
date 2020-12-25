@@ -151,4 +151,20 @@ process.once('SIGTERM', () => {
     bot.stop('SIGTERM');
 });
 
+bot.command('ping', (ctx) => {
+    const firstLast = Array.from(
+        new Set([
+            bmp[0],
+            bmp[bmp.length - 1],
+        ])
+    ).map(a => `${a}°C`).join(' - ');
+    const average = air.reduce((a, c) => (a + c / air.length), 0).toFixed(2);
+
+    ctx.reply(`
+/ping
+${isOnSmile()} 🌡 light : ${firstLast}
+${isOnSmile()} 🌿 air : ${average}°C
+`);
+});
+
 bot.launch();
