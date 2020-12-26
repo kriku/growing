@@ -134,6 +134,18 @@ client.on('message', function (topic, message) {
     }
 
     case (topics.water.out): {
+        if (message[0] == '1') {
+            bot.telegram.sendMessage(
+                '-400442557',
+                `💧 watering 1`,
+            );
+        }
+        if (message[1] == '1') {
+            bot.telegram.sendMessage(
+                '-400442557',
+                `💧 watering 2`,
+            );
+        }
         break;
     }
 
