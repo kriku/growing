@@ -73,8 +73,8 @@ const air = [];
 const bmp = [];
 // количество сообщений, по которым считается статистика
 // (часть теряется, за каждое потерянное - +2с)
-const airJoinLength = () => (isOn ? 30 : 150);
-const bmpJoinLength = () => (isOn ? 30 : 150);
+const airJoinLength = () => (isOn ? 150 : 300);
+const bmpJoinLength = () => (isOn ? 150 : 300);
 
 client.on('message', function (topic, message) {
 
@@ -111,7 +111,7 @@ client.on('message', function (topic, message) {
             bmp.length = 0;
         }
 
-        if (t >= 40) {
+        if (t >= 41) {
             bot.telegram.sendMessage(
                 '-373287526',
                 `HIGH TEMPERATURE!!! ${t}`
