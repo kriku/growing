@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "downlevelIteration": true,
+    "rootDir": ".",
+    "strict": true,
+    "sourceMap": true,
+    "module": "esNext",
+    "target": "es5",
+    "watch": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "outDir": ".",
+    "baseUrl": "."
+  },
+  "include": [
+    ".eslintrc.js",
+    "./src/**/*.ts",
+    "./src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
