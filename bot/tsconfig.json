@@ -13,7 +13,7 @@
     "baseUrl": "."
   },
   "include": [
-    ".eslintrc.js",
+    "./*.js",
     "./src/**/*.ts",
     "./src/**/*.tsx"
   ],
