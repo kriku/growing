@@ -53,8 +53,7 @@ bot.command('water_5sec2', (ctx) => {
 
 function subscribe(channel) {
     client.subscribe(channel, function (err) {
-        console.log(`subscribe ${channel}`);
-        console.log(`${!err ? 'good' : 'error' }`);
+        console.log(`subscribe ${channel} - ${!err ? 'good' : 'error' }`);
     });
 }
 
@@ -121,7 +120,7 @@ client.on('message', function (topic, message) {
     }
 
     case (topics.relay1.out): {
-        // 0 - релю включено
+        // 0 - реле включено
         const status = !(parseInt(message));
         if (status != isOn) {
             isOn = status;
