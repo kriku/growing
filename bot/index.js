@@ -68,6 +68,7 @@ client.on('connect', function () {
 
 let isOn = false;
 const isOnSmile = () => (isOn ? '🌝' : '🌚');
+
 const air = [];
 const bmp = [];
 // количество сообщений, по которым считается статистика
@@ -133,13 +134,14 @@ client.on('message', function (topic, message) {
     }
 
     case (topics.water.out): {
-        if (message[0] == '1') {
+        const water = message.toString();
+        if (water[0] == '1') {
             bot.telegram.sendMessage(
                 '-400442557',
                 `💧 watering 1`,
             );
         }
-        if (message[1] == '1') {
+        if (water[1] == '1') {
             bot.telegram.sendMessage(
                 '-400442557',
                 `💧 watering 2`,
@@ -174,8 +176,7 @@ bot.command('ping', (ctx) => {
     const average = air.reduce((a, c) => (a + c / air.length), 0).toFixed(2);
 
     ctx.reply(`
-/ping
-${isOnSmile()} 🌡 light : ${firstLast}
+${isOnSmile()} 🌡 light : ${firstLast}°C
 ${isOnSmile()} 🌿 air : ${average}°C
 `);
 });
