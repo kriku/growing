@@ -156,10 +156,12 @@ client.on('message', function (topic, message) {
 process.once('SIGINT', () => {
     client.end();
     bot.stop('SIGINT');
+    process.exit(0);
 });
 process.once('SIGTERM', () => {
     client.end();
     bot.stop('SIGTERM');
+    process.exit(0);
 });
 
 bot.command('ping', (ctx) => {
