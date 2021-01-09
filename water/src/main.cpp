@@ -14,8 +14,15 @@ const char* temperature_topic = "water/temperature";
 #define PIN_D3 0  // gpio0 = D3  DA (A- A+) подключается двигатель
 #define PIN_D4 2  // gpio2 = D4  DB (B- B+) подключается двигатель
 
-int pump0 = LOW;
-int pump1 = LOW;
+struct water {
+  int pin;
+  bool enabled;
+  int tick;
+  int left;
+};
+
+struct water A;
+struct water B;
 
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
@@ -27,19 +34,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.println();
 
   if ((char)payload[0] == '1') {
-    pump0 = HIGH;
-    digitalWrite(PIN_D1, pump0);
-  } else {
-    pump0 = LOW;
-    digitalWrite(PIN_D1, pump0);
+    A.enabled = true;
   }
 
   if ((char)payload[1] == '1') {
-    pump1 = HIGH;
-    digitalWrite(PIN_D2, pump1);
-  } else {
-    pump1 = LOW;
-    digitalWrite(PIN_D2, pump1);
+    B.enabled = true;
   }
 }
 
@@ -56,6 +55,25 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+
+  A.pin = PIN_D1;
+  A.tick = 3;
+  A.left = 3;
+  B.pin = PIN_D2;
+  B.tick = 3;
+  B.left = 3;
+}
+
+void watering(struct water *W) {
+  if (W->enabled) {
+    digitalWrite(W->pin, HIGH);
+
+    if (W->left-- == 0) {
+      W->enabled = false;
+      W->left = W->tick;
+      digitalWrite(W->pin, LOW);
+    }
+  }
 }
 
 void loop() {
@@ -74,7 +92,10 @@ void loop() {
     Serial.println(msg);
     client.publish(temperature_topic, msg);
 
-    snprintf (msg, MSG_BUFFER_SIZE, "%d%d", pump0, pump1);
+    watering(&A);
+    watering(&B);
+
+    snprintf(msg, MSG_BUFFER_SIZE, "%d%d", A.enabled, B.enabled);
     Serial.println(msg);
     client.publish(out_topic, msg);
 
