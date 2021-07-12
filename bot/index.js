@@ -70,6 +70,7 @@ client.on('connect', function () {
     subscribe(topics.bot.in);
     subscribe(topics.bmp.out);
     subscribe(topics.relay1.out);
+    subscribe(topics.relay8.out);
     subscribe(topics.water.out);
     subscribe(topics.temperature);
 });
@@ -159,13 +160,14 @@ client.on('message', function (topic, message) {
     }
 
     case (topics.relay8.out): {
-        const relay8 = message.toString();
-        if (relay8[0] == '1') {
+        const relay8 = JSON.parse(message.toString());
+        if (relay8.state[0] == '1') {
             bot.telegram.sendMessage(
                 '-400442557',
                 `💧 is watering`,
             );
         }
+        break;
     }
 
     default: {
