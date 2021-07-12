@@ -11,6 +11,7 @@ const topics = {
     bot: defaultTopics('bot'),
     bmp: defaultTopics('bmp180'),
     relay1: defaultTopics('relay1'),
+    relay8: defaultTopics('relay8'),
     water: defaultTopics('water'),
     temperature: 'water.temperature',
 };
@@ -35,6 +36,13 @@ bot.command('lights_off', (ctx) => {
 
 bot.command('water_off', (ctx) => {
     client.publish(topics.water.in, '00');
+});
+
+bot.command('water', (ctx) => {
+    client.publish(topics.relay8.in, '1000');
+    setInterval(() => {
+        client.publish(topics.relay8.in, '0000');
+    }, 10000);
 });
 
 bot.command('water_5sec1', (ctx) => {
@@ -148,6 +156,16 @@ client.on('message', function (topic, message) {
             );
         }
         break;
+    }
+
+    case (topics.relay8.out): {
+        const relay8 = message.toString();
+        if (relay8[0] == '1') {
+            bot.telegram.sendMessage(
+                '-400442557',
+                `💧 is watering`,
+            );
+        }
     }
 
     default: {
