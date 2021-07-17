@@ -73,22 +73,8 @@ client.on('message', function (topic, message) {
 
         if (status.red.length > 300) {
             for (let color of colors) {
-                const colorAverage = status[color].reduce(
-                    (a, c) => (a + c / status[color].length), 0
-                ).toFixed(2);
-
-                average[color] = colorAverage;
                 status[color].length = 0;
             }
-
-            const temps = Object.entries(average).reduce(
-                (a, c) => (a + c.join(' - ') + '°C\n'), ''
-            );
-
-            bot.telegram.sendMessage(
-                '-400442557',
-                `temps: \n${temps}`,
-            );
         }
 
         if (relay8.state[0] == '1') {
