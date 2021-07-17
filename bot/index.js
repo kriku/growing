@@ -8,12 +8,7 @@ const defaultTopics = (topic) => ({
 });
 
 const topics = {
-    bot: defaultTopics('bot'),
-    bmp: defaultTopics('bmp180'),
-    relay1: defaultTopics('relay1'),
     relay8: defaultTopics('relay8'),
-    water: defaultTopics('water'),
-    temperature: 'water.temperature',
 };
 
 const client  = mqtt.connect('mqtt://alarm', {
@@ -26,37 +21,16 @@ bot.help((ctx) => ctx.reply('Send me a sticker'));
 bot.on('sticker', (ctx) => ctx.reply('👍'));
 bot.hears('hi', (ctx) => ctx.reply('Hey there'));
 
-bot.command('lights_on', (ctx) => {
-    client.publish(topics.relay1.in, '0');
-});
+const WATER_TIMEOUT = 10000;
 
-bot.command('lights_off', (ctx) => {
-    client.publish(topics.relay1.in, '1');
-});
-
-bot.command('water_off', (ctx) => {
-    client.publish(topics.water.in, '00');
-});
+let lastWaterTimeout;
 
 bot.command('water', (ctx) => {
+    clearTimeout(lastWaterTimeout);
     client.publish(topics.relay8.in, '1000');
-    setInterval(() => {
+    lastWaterTimeout = setTimeout(() => {
         client.publish(topics.relay8.in, '0000');
-    }, 10000);
-});
-
-bot.command('water_5sec1', (ctx) => {
-    client.publish(topics.water.in, '01');
-    setInterval(() => {
-        client.publish(topics.water.in, '00');
-    }, 5000);
-});
-
-bot.command('water_5sec2', (ctx) => {
-    client.publish(topics.water.in, '10');
-    setInterval(() => {
-        client.publish(topics.water.in, '00');
-    }, 5000);
+    }, WATER_TIMEOUT);
 });
 
 function subscribe(channel) {
@@ -67,106 +41,76 @@ function subscribe(channel) {
 
 client.on('connect', function () {
     console.log('connect');
-    subscribe(topics.bot.in);
-    subscribe(topics.bmp.out);
-    subscribe(topics.relay1.out);
     subscribe(topics.relay8.out);
-    subscribe(topics.water.out);
-    subscribe(topics.temperature);
 });
 
-let isOn = false;
-const isOnSmile = () => (isOn ? '🌝' : '🌚');
+const status = {
+    isOn: false,
+    isWater: false,
+    isCooling: false,
+    red: [],
+    green: [],
+    blue: [],
+    yellow: [],
+    state: '',
+};
 
-const air = [];
-const bmp = [];
-// количество сообщений, по которым считается статистика
-// (часть теряется, за каждое потерянное - +2с)
-const airJoinLength = () => (isOn ? 150 : 300);
-const bmpJoinLength = () => (isOn ? 150 : 300);
+const colors = ['red', 'green', 'blue', 'yellow'];
 
 client.on('message', function (topic, message) {
 
     switch (topic.replace('/', '.')) {
 
-    case (topics.temperature): {
-        const t = parseFloat(message);
-        air.push(t);
-        if (air.length > airJoinLength()) {
-            const average = air.reduce((a, c) => (a + c / air.length), 0).toFixed(2);
-            bot.telegram.sendMessage(
-                '-400442557',
-                `${isOnSmile()} 🌿 air : ${average}°C`
-            );
-            air.length = 0;
-        }
-        break;
-    }
-
-    case (topics.bmp.out): {
-        const t = parseFloat(message);
-        bmp.push(t);
-        if (bmp.length > bmpJoinLength()) {
-            const firstLast = Array.from(
-                new Set([
-                    bmp[0],
-                    bmp[bmp.length - 1],
-                ])
-            ).map(a => `${a}°C`).join(' - ');
-            bot.telegram.sendMessage(
-                '-400442557',
-                `${isOnSmile()} 🌡 light : ${firstLast}`
-            );
-            bmp.length = 0;
-        }
-
-        if (t >= 41) {
-            bot.telegram.sendMessage(
-                '-373287526',
-                `HIGH TEMPERATURE!!! ${t}`
-            );
-        }
-        break;
-    }
-
-    case (topics.relay1.out): {
-        // 0 - реле включено
-        const status = !(parseInt(message));
-        if (status != isOn) {
-            isOn = status;
-            bot.telegram.sendMessage(
-                '-400442557',
-                isOnSmile()
-            );
-        }
-        break;
-    }
-
-    case (topics.water.out): {
-        const water = message.toString();
-        if (water[0] == '1') {
-            bot.telegram.sendMessage(
-                '-400442557',
-                `💧 watering 1`,
-            );
-        }
-        if (water[1] == '1') {
-            bot.telegram.sendMessage(
-                '-400442557',
-                `💧 watering 2`,
-            );
-        }
-        break;
-    }
-
     case (topics.relay8.out): {
         const relay8 = JSON.parse(message.toString());
-        if (relay8.state[0] == '1') {
+        status.state = relay8.state;
+
+        for (let color of colors) {
+            status[color].push(relay8[color]);
+        }
+
+        const average = {};
+
+        if (status.red.length > 300) {
+            for (let color of colors) {
+                const colorAverage = status[color].reduce(
+                    (a, c) => (a + c / status[color].length), 0
+                ).toFixed(2);
+
+                average[color] = colorAverage;
+                status[color].length = 0;
+            }
+
+            const temps = Object.entries(average).reduce(
+                (a, c) => (a + c.join(' - ') + '°C\n'), ''
+            );
+
             bot.telegram.sendMessage(
                 '-400442557',
-                `💧 is watering`,
+                `temps: \n${temps}`,
             );
         }
+
+        if (relay8.state[0] == '1') {
+            if (!status.isWater) {
+                bot.telegram.sendMessage(
+                    '-400442557',
+                    `💧 watering start`,
+                );
+            }
+            status.isWater = true;
+        }
+
+        if (relay8.state[0] == '0') {
+            if (status.isWater) {
+                bot.telegram.sendMessage(
+                    '-400442557',
+                    `💧 watering end`,
+                );
+            }
+            status.isWater = false;
+        }
+
         break;
     }
 
@@ -187,18 +131,25 @@ process.once('SIGTERM', () => {
 });
 
 bot.command('ping', (ctx) => {
-    const firstLast = Array.from(
-        new Set([
-            bmp[0],
-            bmp[bmp.length - 1],
-        ])
-    ).map(a => `${a}°C`).join(' - ');
-    const average = air.reduce((a, c) => (a + c / air.length), 0).toFixed(2);
+    const average = {};
+
+    for (let color of colors) {
+        const colorAverage = status[color].reduce(
+            (a, c) => (a + c / status[color].length), 0
+        ).toFixed(2);
+
+        average[color] = colorAverage;
+        status[color].length = 0;
+    }
+
+    const temps = Object.entries(average).reduce(
+        (a, c) => (a + c.join(' - ') + '°C\n'), ''
+    );
 
     ctx.reply(`
-${isOnSmile()} 🌡 light : ${firstLast}°C
-${isOnSmile()} 🌿 air : ${average}°C
-`);
+state: ${status.state}
+temps: \n${temps}`);
+
 });
 
 bot.launch();
